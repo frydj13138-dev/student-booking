@@ -13,7 +13,7 @@
         input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 14px; }
         button { width: 100%; padding: 12px; background-color: #0056b3; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; margin-top: 10px; }
         button:hover { background-color: #004085; }
-        #resultMessage { margin-top: 15px; font-size: 13px; }
+        #resultMessage { margin-top: 15px; font-size: 13px; font-weight: bold; }
         .ticket { background: #e9f5ff; border: 1px dashed #0056b3; padding: 15px; border-radius: 8px; margin-top: 15px; text-align: right; font-size: 13px; }
     </style>
 </head>
@@ -81,7 +81,7 @@
                     ticketDiv.style.display = 'block';
                     document.getElementById('bookingForm').style.display = 'none';
                 } else {
-                    resultDiv.innerHTML = `<span style="color: red;">${data.error}</span>`;
+                    resultDiv.innerHTML = `<span style="color: red;">${data.error || 'خطا در ثبت نوبت.'}</span>`;
                 }
             } catch (err) {
                 resultDiv.innerHTML = '<span style="color: red;">خطا در اتصال به سرور.</span>';
@@ -90,3 +90,4 @@
     </script>
 </body>
 </html>
+
