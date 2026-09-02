@@ -13,10 +13,11 @@ const db = new sqlite3.Database('./appointments.db');
 
 db.serialize(() => {
     db.run(`PRAGMA journal_mode = WAL;`);
+    // جدول بدون ساختار UNIQUE ساخته می‌شود تا امکان گرفتن نوبت در روزهای مجزا فراهم شود
     db.run(`CREATE TABLE IF NOT EXISTS appointments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fullname TEXT NOT NULL,
-        student_id TEXT UNIQUE NOT NULL,
+        student_id TEXT NOT NULL,
         date_shamsi TEXT NOT NULL,
         time_slot TEXT NOT NULL,
         created_at TEXT NOT NULL
@@ -64,14 +65,18 @@ app.post('/api/book', (req, res) => {
         return res.status(400).json({ error: 'شماره دانشجویی باید فقط عدد و حداکثر ۱۴ رقم باشد.' });
     }
 
+    // محاسبه تاریخ انتخابی
     let selectedDateShamsi = moment().format('jYYYY/jMM/jDD');
     if (target_date === 'tomorrow') {
         selectedDateShamsi = moment().add(1, 'day').format('jYYYY/jMM/jDD');
     }
 
-    db.get(`SELECT * FROM appointments WHERE student_id = ?`, [cleanStudentId], (err, row) => {
+    // بررسی اینکه آیا همین شماره دانشجویی در همین تاریخ انتخابی نوبت گرفته است یا خیر
+    db.get(`SELECT * FROM appointments WHERE student_id = ? AND date_shamsi = ?`, [cleanStudentId, selectedDateShamsi], (err, row) => {
         if (err) return res.status(500).json({ error: 'خطا در دیتابیس.' });
-        if (row) return res.status(400).json({ error: `این شماره دانشجویی قبلاً برای تاریخ ${row.date_shamsi} نوبت گرفته است.` });
+        if (row) {
+            return res.status(400).json({ error: `شما قبلاً برای تاریخ ${selectedDateShamsi} یک نوبت (ساعت ${row.time_slot}) ثبت کرده‌اید.` });
+        }
 
         getAvailableSlotForDate(selectedDateShamsi, (err, slot) => {
             if (err) return res.status(400).json({ error: err.message });
@@ -80,9 +85,7 @@ app.post('/api/book', (req, res) => {
             db.run(`INSERT INTO appointments (fullname, student_id, date_shamsi, time_slot, created_at) VALUES (?, ?, ?, ?, ?)`,
                 [cleanName, cleanStudentId, slot.date, slot.time],
                 function(err) {
-                    if (err) {
-                        return res.status(400).json({ error: 'این شماره دانشجویی قبلاً ثبت شده است.' });
-                    }
+                    if (err) return res.status(500).json({ error: 'خطا در ثبت نوبت.' });
                     res.json({ 
                         success: true, 
                         appointment: { 
@@ -125,4 +128,3 @@ app.get('/api/admin/export-excel', (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-
