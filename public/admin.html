@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مدیریت نوبت‌ها</title>
+    <style>
+        body { font-family: Tahoma, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h2 { text-align: center; color: #333; }
+        .login-box { text-align: center; margin-bottom: 20px; }
+        input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
+        button { padding: 10px 15px; background-color: #0056b3; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        button.delete-btn { background-color: #dc3545; font-size: 12px; padding: 5px 10px; }
+        button.delete-btn:hover { background-color: #bd2130; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; text-align: center; font-size: 13px; }
+        th, td { border: 1px solid #ddd; padding: 10px; }
+        th { background-color: #f8f9fa; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>پنل مدیریت نوبت‌ها</h2>
+        <div class="login-box">
+            <input type="password" id="adminKey" placeholder="رمز عبور ادمین">
+            <button onclick="loadAppointments()">ورود و دریافت لیست</button>
+        </div>
+
+        <div id="statusMessage" style="text-align: center; color: red;"></div>
+
+        <table id="appointmentsTable" style="display: none;">
+            <thead>
+                <tr>
+                    <th>کد پیگیری</th>
+                    <th>نام و نام خانوادگی</th>
+                    <th>شماره دانشجویی</th>
+                    <th>تاریخ نوبت</th>
+                    <th>ساعت</th>
+                    <th>عملیات</th>
+                </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        async function loadAppointments() {
+            const key = document.getElementById('adminKey').value;
+            const msg = document.getElementById('statusMessage');
+            msg.innerText = '';
+
+            try {
+                const response = await fetch(`/api/admin/list?key=${key}`);
+                if (!response.ok) {
+                    msg.innerText = 'رمز عبور اشتباه است یا دسترسی مجاز نیست!';
+                    document.getElementById('appointmentsTable').style.display = 'none';
+                    return;
+                }
+                const data = await response.json();
+                const tbody = document.getElementById('tableBody');
+                tbody.innerHTML = '';
+
+                data.forEach(item => {
+                    tbody.innerHTML += `
+                        <tr>
+                            <td>${item.id}</td>
+                            <td>${item.fullname}</td>
+                            <td>${item.student_id}</td>
+                            <td>${item.date_shamsi}</td>
+                            <td>${item.time_slot}</td>
+                            <td>
+                                <button class="delete-btn" onclick="deleteAppointment(${item.id})">حذف</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+
+                document.getElementById('appointmentsTable').style.display = 'table';
+            } catch (err) {
+                msg.innerText = 'خطا در دریافت اطلاعات.';
+            }
+        }
+
+        async function deleteAppointment(id) {
+            if (!confirm('آیا از حذف این نوبت اطمینان دارید؟')) return;
+            const key = document.getElementById('adminKey').value;
+
+            try {
+                const response = await fetch(`/api/admin/delete/${id}?key=${key}`, { method: 'DELETE' });
+                const result = await response.json();
+                if (response.ok) {
+                    alert('نوبت با موفقیت حذف شد.');
+                    loadAppointments();
+                } else {
+                    alert(result.error || 'خطا در حذف نوبت.');
+                }
+            } catch (err) {
+                alert('خطا در اتصال به سرور.');
+            }
+        }
+    </script>
+</body>
+</html>
