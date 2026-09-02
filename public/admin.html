@@ -9,8 +9,11 @@
         .container { max-width: 900px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
         h2 { text-align: center; color: #333; }
         .login-box { text-align: center; margin-bottom: 20px; }
+        .actions-box { text-align: center; margin-top: 15px; display: none; }
         input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; }
         button { padding: 10px 15px; background-color: #0056b3; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        button.excel-btn { background-color: #28a745; margin-right: 10px; }
+        button.excel-btn:hover { background-color: #218838; }
         button.delete-btn { background-color: #dc3545; font-size: 12px; padding: 5px 10px; }
         button.delete-btn:hover { background-color: #bd2130; }
         table { width: 100%; border-collapse: collapse; margin-top: 20px; text-align: center; font-size: 13px; }
@@ -26,7 +29,11 @@
             <button onclick="loadAppointments()">ورود و دریافت لیست</button>
         </div>
 
-        <div id="statusMessage" style="text-align: center; color: red;"></div>
+        <div id="actionsBox" class="actions-box">
+            <button class="excel-btn" onclick="downloadExcel()">دانلود خروجی اکسل</button>
+        </div>
+
+        <div id="statusMessage" style="text-align: center; color: red; margin-top: 10px;"></div>
 
         <table id="appointmentsTable" style="display: none;">
             <thead>
@@ -54,6 +61,7 @@
                 if (!response.ok) {
                     msg.innerText = 'رمز عبور اشتباه است یا دسترسی مجاز نیست!';
                     document.getElementById('appointmentsTable').style.display = 'none';
+                    document.getElementById('actionsBox').style.display = 'none';
                     return;
                 }
                 const data = await response.json();
@@ -76,9 +84,15 @@
                 });
 
                 document.getElementById('appointmentsTable').style.display = 'table';
+                document.getElementById('actionsBox').style.display = 'block';
             } catch (err) {
                 msg.innerText = 'خطا در دریافت اطلاعات.';
             }
+        }
+
+        function downloadExcel() {
+            const key = document.getElementById('adminKey').value;
+            window.location.href = `/api/admin/export-excel?key=${key}`;
         }
 
         async function deleteAppointment(id) {
