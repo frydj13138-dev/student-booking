@@ -13,6 +13,8 @@ const db = new sqlite3.Database('./appointments.db');
 
 db.serialize(() => {
     db.run(`PRAGMA journal_mode = WAL;`);
+    
+    // جدول نوبت‌ها
     db.run(`CREATE TABLE IF NOT EXISTS appointments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fullname TEXT NOT NULL,
@@ -21,7 +23,40 @@ db.serialize(() => {
         time_slot TEXT NOT NULL,
         created_at TEXT NOT NULL
     )`);
+
+    // جدول کاربران ادمین
+    db.run(`CREATE TABLE IF NOT EXISTS admin_users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        role TEXT NOT NULL
+    )`);
+
+    // ایجاد اکانت سوپر ادمین پیش‌فرض
+    db.run(`INSERT OR IGNORE INTO admin_users (username, password, role) VALUES ('superadmin', '09965234543', 'super')`);
 });
+
+// میدل‌ور بررسی دسترسی ادمین‌ها
+function authenticateAdmin(req, res, next) {
+    let authHeader = req.headers.authorization;
+    if (!authHeader && req.query.auth) {
+        authHeader = req.query.auth;
+    }
+
+    if (!authHeader || !authHeader.startsWith('Basic ')) {
+        return res.status(401).json({ error: 'دسترسی غیرمجاز!' });
+    }
+
+    const credentials = Buffer.from(authHeader.split(' ')[1], 'base64').toString('ascii').split(':');
+    const username = credentials[0];
+    const password = credentials[1];
+
+    db.get(`SELECT * FROM admin_users WHERE username = ? AND password = ?`, [username, password], (err, user) => {
+        if (err || !user) return res.status(403).json({ error: 'نام کاربری یا رمز عبور اشتباه است.' });
+        req.adminUser = user;
+        next();
+    });
+}
 
 function getAvailableSlotForDate(selectedDateShamsi, callback) {
     const slots = [];
@@ -56,20 +91,10 @@ app.post('/api/book', (req, res) => {
     const cleanStudentId = student_id.trim();
     const selectedDateShamsi = target_date.trim();
 
-    if (cleanName.length < 2) {
-        return res.status(400).json({ error: 'نام و نام خانوادگی معتبر نیست.' });
-    }
-
-    const studentIdRegex = /^\d{1,14}$/;
-    if (!studentIdRegex.test(cleanStudentId)) {
-        return res.status(400).json({ error: 'شماره دانشجویی باید فقط عدد و حداکثر ۱۴ رقم باشد.' });
-    }
-
-    // چک کردن تکراری نبودن نوبت در همان تاریخ مشخص
     db.get(`SELECT * FROM appointments WHERE student_id = ? AND date_shamsi = ?`, [cleanStudentId, selectedDateShamsi], (err, row) => {
         if (err) return res.status(500).json({ error: 'خطا در دیتابیس.' });
         if (row) {
-            return res.status(400).json({ error: `شما قبلاً برای تاریخ ${selectedDateShamsi} یک نوبت (ساعت ${row.time_slot}) ثبت کرده‌اید.` });
+            return res.status(400).json({ error: `شما قبلاً برای تاریخ ${selectedDateShamsi} نوبت ثبت کرده‌اید.` });
         }
 
         getAvailableSlotForDate(selectedDateShamsi, (err, slot) => {
@@ -82,13 +107,7 @@ app.post('/api/book', (req, res) => {
                     if (err) return res.status(500).json({ error: 'خطا در ثبت نوبت.' });
                     res.json({ 
                         success: true, 
-                        appointment: { 
-                            id: this.lastID, 
-                            fullname: cleanName, 
-                            student_id: cleanStudentId, 
-                            date_shamsi: slot.date, 
-                            time_slot: slot.time 
-                        } 
+                        appointment: { id: this.lastID, fullname: cleanName, student_id: cleanStudentId, date_shamsi: slot.date, time_slot: slot.time } 
                     });
                 }
             );
@@ -96,31 +115,44 @@ app.post('/api/book', (req, res) => {
     });
 });
 
-app.get('/api/admin/list', (req, res) => {
-    const adminKey = process.env.ADMIN_KEY || '09965234543';
-    if (req.query.key !== adminKey) return res.status(403).json({ error: 'دسترسی غیرمجاز!' });
+// ورود ادمین
+app.get('/api/admin/login', authenticateAdmin, (req, res) => {
+    res.json({ success: true, role: req.adminUser.role });
+});
 
+// تعریف ادمین جدید (مخصوص سوپر ادمین)
+app.post('/api/admin/create-user', authenticateAdmin, (req, res) => {
+    if (req.adminUser.role !== 'super') {
+        return res.status(403).json({ error: 'فقط سوپر ادمین مجاز به ایجاد ادمین جدید است.' });
+    }
+    const { username, password, role } = req.body;
+    db.run(`INSERT INTO admin_users (username, password, role) VALUES (?, ?, ?)`, [username, password, role || 'admin'], (err) => {
+        if (err) return res.status(400).json({ error: 'این نام کاربری قبلاً وجود دارد.' });
+        res.json({ success: true, message: 'ادمین جدید ایجاد شد.' });
+    });
+});
+
+// مشاهده لیست نوبت‌ها
+app.get('/api/admin/list', authenticateAdmin, (req, res) => {
     db.all(`SELECT * FROM appointments ORDER BY date_shamsi DESC, time_slot ASC`, [], (err, rows) => {
         if (err) return res.status(500).json({ error: 'خطا در دریافت لیست.' });
         res.json(rows);
     });
 });
 
-app.delete('/api/admin/delete/:id', (req, res) => {
-    const adminKey = process.env.ADMIN_KEY || '09965234543';
-    if (req.query.key !== adminKey) return res.status(403).json({ error: 'دسترسی غیرمجاز!' });
-
-    const appointmentId = req.params.id;
-    db.run(`DELETE FROM appointments WHERE id = ?`, [appointmentId], function(err) {
+// حذف نوبت (مخصوص سوپر ادمین)
+app.delete('/api/admin/delete/:id', authenticateAdmin, (req, res) => {
+    if (req.adminUser.role !== 'super') {
+        return res.status(403).json({ error: 'شما دسترسی لازم برای حذف نوبت را ندارید.' });
+    }
+    db.run(`DELETE FROM appointments WHERE id = ?`, [req.params.id], function(err) {
         if (err) return res.status(500).json({ error: 'خطا در حذف نوبت.' });
-        res.json({ success: true, message: 'نوبت حذف شد.' });
+        res.json({ success: true });
     });
 });
 
-app.get('/api/admin/export-excel', (req, res) => {
-    const adminKey = process.env.ADMIN_KEY || '09965234543';
-    if (req.query.key !== adminKey) return res.status(403).send('دسترسی غیرمجاز!');
-
+// دانلود خروجی اکسل (مشترک برای همه ادمین‌ها)
+app.get('/api/admin/export-excel', authenticateAdmin, (req, res) => {
     db.all(`SELECT * FROM appointments ORDER BY date_shamsi ASC, time_slot ASC`, [], async (err, rows) => {
         if (err) return res.status(500).send('خطا در دیتابیس');
         const workbook = new ExcelJS.Workbook();
