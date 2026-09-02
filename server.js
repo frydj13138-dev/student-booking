@@ -54,6 +54,7 @@ app.post('/api/book', (req, res) => {
 
     const cleanName = fullname.trim();
     const cleanStudentId = student_id.trim();
+    const selectedDateShamsi = target_date.trim();
 
     if (cleanName.length < 2) {
         return res.status(400).json({ error: 'نام و نام خانوادگی معتبر نیست.' });
@@ -64,11 +65,7 @@ app.post('/api/book', (req, res) => {
         return res.status(400).json({ error: 'شماره دانشجویی باید فقط عدد و حداکثر ۱۴ رقم باشد.' });
     }
 
-    let selectedDateShamsi = moment().format('jYYYY/jMM/jDD');
-    if (target_date === 'tomorrow') {
-        selectedDateShamsi = moment().add(1, 'day').format('jYYYY/jMM/jDD');
-    }
-
+    // چک کردن تکراری نبودن نوبت در همان تاریخ مشخص
     db.get(`SELECT * FROM appointments WHERE student_id = ? AND date_shamsi = ?`, [cleanStudentId, selectedDateShamsi], (err, row) => {
         if (err) return res.status(500).json({ error: 'خطا در دیتابیس.' });
         if (row) {
@@ -99,7 +96,6 @@ app.post('/api/book', (req, res) => {
     });
 });
 
-// دریافت لیست نوبت‌ها برای ادمین
 app.get('/api/admin/list', (req, res) => {
     const adminKey = process.env.ADMIN_KEY || '09965234543';
     if (req.query.key !== adminKey) return res.status(403).json({ error: 'دسترسی غیرمجاز!' });
@@ -110,7 +106,6 @@ app.get('/api/admin/list', (req, res) => {
     });
 });
 
-// حذف نوبت توسط ادمین
 app.delete('/api/admin/delete/:id', (req, res) => {
     const adminKey = process.env.ADMIN_KEY || '09965234543';
     if (req.query.key !== adminKey) return res.status(403).json({ error: 'دسترسی غیرمجاز!' });
@@ -122,7 +117,6 @@ app.delete('/api/admin/delete/:id', (req, res) => {
     });
 });
 
-// دریافت خروجی اکسل
 app.get('/api/admin/export-excel', (req, res) => {
     const adminKey = process.env.ADMIN_KEY || '09965234543';
     if (req.query.key !== adminKey) return res.status(403).send('دسترسی غیرمجاز!');
