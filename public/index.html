@@ -9,10 +9,9 @@
     
     <style>
         :root {
-            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
-            --card-bg: rgba(255, 255, 255, 0.95);
+            --card-bg: rgba(255, 255, 255, 0.88);
             --primary: #1e3a8a;
-            --primary-accent: #3b82f6;
+            --primary-accent: #2563eb;
             --gold-accent: #d97706;
             --text-dark: #0f172a;
             --text-muted: #64748b;
@@ -21,7 +20,9 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Vazirmatn', sans-serif; }
         
         body { 
-            background: var(--bg-gradient); 
+            /* پس‌زمینه تصویر مجتمع الهیه همراه با پوشش لایه سورمه‌ای مدرن */
+            background: linear-gradient(rgba(15, 23, 42, 0.6), rgba(15, 23, 42, 0.7)), url('campus.jpg') no-repeat center center fixed;
+            background-size: cover;
             min-height: 100vh; 
             display: flex; 
             justify-content: center; 
@@ -36,9 +37,11 @@
             max-width: 450px; 
             padding: 40px 32px; 
             border-radius: 24px; 
-            box-shadow: 0 20px 40px rgba(0,0,0,0.3), 0 0 0 1px rgba(255, 255, 255, 0.1); 
-            backdrop-filter: blur(10px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); 
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
             animation: slideUp 0.5s ease-out;
+            border: 1px solid rgba(255, 255, 255, 0.5);
         }
 
         .header-title { text-align: center; margin-bottom: 28px; }
@@ -61,11 +64,11 @@
         input { 
             width: 100%; 
             padding: 14px 16px; 
-            border: 2px solid #e2e8f0; 
+            border: 2px solid #cbd5e1; 
             border-radius: 12px; 
             font-size: 14px; 
             text-align: center; 
-            background-color: #f8fafc;
+            background-color: rgba(255, 255, 255, 0.9);
             transition: all 0.25s ease;
             color: var(--text-dark);
             font-weight: 600;
@@ -73,9 +76,9 @@
 
         input:focus { 
             border-color: var(--primary-accent); 
-            background-color: #fff; 
             outline: none; 
-            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+            background-color: #ffffff;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
         }
 
         button.btn-submit { 
@@ -88,19 +91,19 @@
             font-size: 15px; 
             font-weight: 700; 
             cursor: pointer; 
-            box-shadow: 0 8px 20px rgba(30, 58, 138, 0.3);
+            box-shadow: 0 8px 20px rgba(30, 58, 138, 0.4);
             transition: all 0.2s ease;
         }
 
         button.btn-submit:hover { 
             transform: translateY(-2px); 
-            box-shadow: 0 12px 24px rgba(30, 58, 138, 0.4); 
+            box-shadow: 0 12px 24px rgba(30, 58, 138, 0.5); 
         }
 
         #resultMessage { margin-top: 18px; font-size: 13.5px; text-align: center; font-weight: 600; }
 
         .ticket-card { 
-            background: linear-gradient(180deg, #f8fafc 0%, #edf2f7 100%);
+            background: #f8fafc;
             border: 2px dashed #cbd5e1; 
             padding: 24px; 
             border-radius: 16px; 
@@ -152,7 +155,7 @@
                 <input type="text" id="student_id" required placeholder="مثال: 402111216">
             </div>
             <div class="form-group">
-                <label>تاریخ نوبت (صرفاً ۱۴ الی ۲۰ شهریور ۱۴۰۵):</label>
+                <label>تاریخ نوبت (صرفاً ۱۴ الی ۲۰ شهریور):</label>
                 <input type="text" id="target_date" class="pdate" required readonly placeholder="کلیک جهت انتخاب تاریخ">
             </div>
             <button type="submit" class="btn-submit">ثبت و دریافت نوبت</button>
@@ -175,22 +178,14 @@
     <script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
     <script>
         $(document).ready(function() {
-            var minD = new persianDate([1405, 6, 14]).valueOf();
-            var maxD = new persianDate([1405, 6, 20]).valueOf();
-
             $('.pdate').persianDatepicker({
                 format: 'YYYY/MM/DD',
                 autoClose: true,
                 persianDigit: false,
                 onlySelectOnDate: true,
-                minDate: minD,
-                maxDate: maxD,
-                navigator: {
-                    enabled: false
-                },
                 checkDate: function(unix) {
                     var pdate = new persianDate(unix);
-                    return pdate.year() === 1405 && pdate.month() === 6 && pdate.date() >= 14 && pdate.date() <= 20;
+                    return pdate.month() === 6 && pdate.date() >= 14 && pdate.date() <= 20;
                 }
             });
         });
