@@ -13,7 +13,6 @@ const db = new sqlite3.Database('./appointments.db');
 
 db.serialize(() => {
     db.run(`PRAGMA journal_mode = WAL;`);
-    // جدول بدون ساختار UNIQUE ساخته می‌شود تا امکان گرفتن نوبت در روزهای مجزا فراهم شود
     db.run(`CREATE TABLE IF NOT EXISTS appointments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fullname TEXT NOT NULL,
@@ -65,13 +64,11 @@ app.post('/api/book', (req, res) => {
         return res.status(400).json({ error: 'شماره دانشجویی باید فقط عدد و حداکثر ۱۴ رقم باشد.' });
     }
 
-    // محاسبه تاریخ انتخابی
     let selectedDateShamsi = moment().format('jYYYY/jMM/jDD');
     if (target_date === 'tomorrow') {
         selectedDateShamsi = moment().add(1, 'day').format('jYYYY/jMM/jDD');
     }
 
-    // بررسی اینکه آیا همین شماره دانشجویی در همین تاریخ انتخابی نوبت گرفته است یا خیر
     db.get(`SELECT * FROM appointments WHERE student_id = ? AND date_shamsi = ?`, [cleanStudentId, selectedDateShamsi], (err, row) => {
         if (err) return res.status(500).json({ error: 'خطا در دیتابیس.' });
         if (row) {
@@ -83,7 +80,7 @@ app.post('/api/book', (req, res) => {
             const createdAt = moment().format('jYYYY/jMM/jDD HH:mm:ss');
             
             db.run(`INSERT INTO appointments (fullname, student_id, date_shamsi, time_slot, created_at) VALUES (?, ?, ?, ?, ?)`,
-                [cleanName, cleanStudentId, slot.date, slot.time],
+                [cleanName, cleanStudentId, slot.date, slot.time, createdAt],
                 function(err) {
                     if (err) return res.status(500).json({ error: 'خطا در ثبت نوبت.' });
                     res.json({ 
@@ -102,8 +99,32 @@ app.post('/api/book', (req, res) => {
     });
 });
 
+// دریافت لیست نوبت‌ها برای ادمین
+app.get('/api/admin/list', (req, res) => {
+    const adminKey = process.env.ADMIN_KEY || '09965234543';
+    if (req.query.key !== adminKey) return res.status(403).json({ error: 'دسترسی غیرمجاز!' });
+
+    db.all(`SELECT * FROM appointments ORDER BY date_shamsi DESC, time_slot ASC`, [], (err, rows) => {
+        if (err) return res.status(500).json({ error: 'خطا در دریافت لیست.' });
+        res.json(rows);
+    });
+});
+
+// حذف نوبت توسط ادمین
+app.delete('/api/admin/delete/:id', (req, res) => {
+    const adminKey = process.env.ADMIN_KEY || '09965234543';
+    if (req.query.key !== adminKey) return res.status(403).json({ error: 'دسترسی غیرمجاز!' });
+
+    const appointmentId = req.params.id;
+    db.run(`DELETE FROM appointments WHERE id = ?`, [appointmentId], function(err) {
+        if (err) return res.status(500).json({ error: 'خطا در حذف نوبت.' });
+        res.json({ success: true, message: 'نوبت حذف شد.' });
+    });
+});
+
+// دریافت خروجی اکسل
 app.get('/api/admin/export-excel', (req, res) => {
-    const adminKey = process.env.ADMIN_KEY || 'SecretAdminKey1403';
+    const adminKey = process.env.ADMIN_KEY || '09965234543';
     if (req.query.key !== adminKey) return res.status(403).send('دسترسی غیرمجاز!');
 
     db.all(`SELECT * FROM appointments ORDER BY date_shamsi ASC, time_slot ASC`, [], async (err, rows) => {
