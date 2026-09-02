@@ -3,52 +3,234 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سامانه نوبت‌دهی</title>
+    <title>سامانه نوبت‌دهی دانشگاه مهارت و کارآفرینی</title>
+
+    <!-- فونت Vazirmatn جهت استایل شیک و حرفه‌ای -->
+    <link href="https://cdn.jsdelivr.net/gh/rastikerdar/vazirmatn@v33.003/Vazirmatn-font-face.css" rel="stylesheet" type="text/css" />
     <!-- استایل تقویم شمسی -->
     <link rel="stylesheet" href="https://unpkg.com/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css"/>
+
     <style>
-        body { font-family: Tahoma, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
-        h2 { margin-bottom: 20px; color: #333; font-size: 18px; }
-        .form-group { margin-bottom: 15px; text-align: right; }
-        label { display: block; margin-bottom: 5px; font-size: 13px; color: #666; }
-        input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 14px; text-align: center; }
-        button { width: 100%; padding: 12px; background-color: #0056b3; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; margin-top: 10px; }
-        button:hover { background-color: #004085; }
-        #resultMessage { margin-top: 15px; font-size: 13px; font-weight: bold; }
-        .ticket { background: #e9f5ff; border: 1px dashed #0056b3; padding: 15px; border-radius: 8px; margin-top: 15px; text-align: right; font-size: 13px; }
+        :root {
+            --primary-color: #0056b3;
+            --primary-hover: #004085;
+            --accent-color: #28a745;
+            --bg-color: #f0f4f8;
+            --card-bg: #ffffff;
+            --text-color: #2c3e50;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Vazirmatn', sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .container {
+            background: var(--card-bg);
+            width: 100%;
+            max-width: 440px;
+            padding: 35px 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            transition: all 0.3s ease;
+        }
+
+        .header-title {
+            text-align: center;
+            margin-bottom: 25px;
+        }
+
+        .header-title h1 {
+            font-size: 20px;
+            color: var(--primary-color);
+            font-weight: 800;
+            line-height: 1.5;
+        }
+
+        .header-title p {
+            font-size: 13px;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+            text-align: right;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-color);
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 15px;
+            border: 1.5px solid #dcdfe6;
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            text-align: center;
+            background-color: #f9fafb;
+        }
+
+        input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px rgba(0, 86, 179, 0.15);
+            background-color: #fff;
+        }
+
+        button.btn-submit {
+            width: 100%;
+            padding: 14px;
+            background-color: var(--primary-color);
+            color: #ffffff;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+            box-shadow: 0 4px 12px rgba(0, 86, 179, 0.25);
+            margin-top: 10px;
+        }
+
+        button.btn-submit:hover {
+            background-color: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        button.btn-submit:active {
+            transform: translateY(1px);
+        }
+
+        #resultMessage {
+            margin-top: 18px;
+            font-size: 13.5px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .ticket-card {
+            background: #f4f9ff;
+            border: 1.5px dashed var(--primary-color);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            text-align: right;
+            animation: fadeIn 0.4s ease-in-out;
+        }
+
+        .ticket-card h3 {
+            text-align: center;
+            color: var(--primary-color);
+            font-size: 15px;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #d0e3ff;
+            padding-bottom: 8px;
+        }
+
+        .ticket-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 13.5px;
+        }
+
+        .ticket-row span.label {
+            color: #6c757d;
+        }
+
+        .ticket-row span.value {
+            font-weight: 700;
+            color: #2c3e50;
+        }
+
+        /* شخصی‌سازی ظاهر تقویم شمسی */
+        .datepicker-plot-area {
+            font-family: 'Vazirmatn', sans-serif !important;
+            border-radius: 12px !important;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.15) !important;
+            border: none !important;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
-    <div class="card">
-        <h2>سامانه نوبت‌دهی</h2>
+
+    <div class="container">
+        <div class="header-title">
+            <h1>دانشگاه مهارت و کارآفرینی</h1>
+            <p>سامانه دریافت نوبت اینترنتی</p>
+        </div>
+
         <form id="bookingForm">
             <div class="form-group">
-                <label>نام و نام خانوادگی:</label>
+                <label for="fullname">نام و نام خانوادگی:</label>
                 <input type="text" id="fullname" required placeholder="مثال: علی محمدی">
             </div>
+
             <div class="form-group">
-                <label>شماره دانشجویی:</label>
+                <label for="student_id">شماره دانشجویی:</label>
                 <input type="text" id="student_id" required placeholder="مثال: 402111216">
             </div>
+
             <div class="form-group">
-                <label>انتخاب تاریخ نوبت (شمسی):</label>
-                <input type="text" id="target_date" class="pdate" required readonly placeholder="برای انتخاب تاریخ کلیک کنید">
+                <label for="target_date">تاریخ نوبت (شمسی):</label>
+                <input type="text" id="target_date" class="pdate" required readonly placeholder="جهت انتخاب تاریخ کلیک کنید">
             </div>
-            <button type="submit">دریافت نوبت</button>
+
+            <button type="submit" class="btn-submit">ثبت و دریافت نوبت</button>
         </form>
 
         <div id="resultMessage"></div>
-        <div id="ticketSection" class="ticket" style="display: none;">
-            <p><strong>کد پیگیری:</strong> <span id="t-id"></span></p>
-            <p><strong>نام:</strong> <span id="t-name"></span></p>
-            <p><strong>شماره دانشجویی:</strong> <span id="t-sid"></span></p>
-            <p><strong>تاریخ نوبت:</strong> <span id="t-date"></span></p>
-            <p><strong>ساعت نوبت:</strong> <span id="t-time"></span></p>
+
+        <div id="ticketSection" class="ticket-card" style="display: none;">
+            <h3>رسید نوبت‌دهی</h3>
+            <div class="ticket-row">
+                <span class="label">کد پیگیری:</span>
+                <span class="value" id="t-id"></span>
+            </div>
+            <div class="ticket-row">
+                <span class="label">نام و نام خانوادگی:</span>
+                <span class="value" id="t-name"></span>
+            </div>
+            <div class="ticket-row">
+                <span class="label">شماره دانشجویی:</span>
+                <span class="value" id="t-sid"></span>
+            </div>
+            <div class="ticket-row">
+                <span class="label">تاریخ نوبت:</span>
+                <span class="value" id="t-date"></span>
+            </div>
+            <div class="ticket-row">
+                <span class="label">ساعت حضور:</span>
+                <span class="value" id="t-time" style="color: #d9534f;"></span>
+            </div>
         </div>
     </div>
 
-    <!-- اسکریپت‌های تقویم شمسی -->
+    <!-- اسکریپت‌های مورد نیاز تقویم -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <script src="https://unpkg.com/persian-date@1.1.0/dist/persian-date.min.js"></script>
     <script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
@@ -67,7 +249,8 @@
             e.preventDefault();
             const resultDiv = document.getElementById('resultMessage');
             const ticketDiv = document.getElementById('ticketSection');
-            resultDiv.innerHTML = 'در حال بررسی...';
+            
+            resultDiv.innerHTML = '<span style="color: #0056b3;">در حال بررسی ظرفیت و ثبت نوبت...</span>';
             ticketDiv.style.display = 'none';
 
             const payload = {
@@ -85,19 +268,20 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    resultDiv.innerHTML = '<span style="color: green;">نوبت با موفقیت ثبت شد!</span>';
+                    resultDiv.innerHTML = '<span style="color: #28a745;">✓ نوبت شما با موفقیت ثبت گردید.</span>';
                     document.getElementById('t-id').innerText = data.appointment.id;
                     document.getElementById('t-name').innerText = data.appointment.fullname;
                     document.getElementById('t-sid').innerText = data.appointment.student_id;
                     document.getElementById('t-date').innerText = data.appointment.date_shamsi;
                     document.getElementById('t-time').innerText = data.appointment.time_slot;
+                    
                     ticketDiv.style.display = 'block';
                     document.getElementById('bookingForm').style.display = 'none';
                 } else {
-                    resultDiv.innerHTML = `<span style="color: red;">${data.error || 'خطا در ثبت نوبت.'}</span>`;
+                    resultDiv.innerHTML = `<span style="color: #dc3545;">${data.error || 'خطا در ثبت نوبت.'}</span>`;
                 }
             } catch (err) {
-                resultDiv.innerHTML = '<span style="color: red;">خطا در اتصال به سرور.</span>';
+                resultDiv.innerHTML = '<span style="color: #dc3545;">خطا در ارتباط با سرور. لطفاً مجدداً تلاش کنید.</span>';
             }
         });
     </script>
