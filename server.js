@@ -2,14 +2,24 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const moment = require('moment-jalaali');
 const ExcelJS = require('exceljs');
+const rateLimit = require('express-rate-limit');
 
 const app = express();
+app.set('trust proxy', 1);
+
 app.use(express.json());
 app.use(express.static('public'));
+
+const bookingLimiter = rateLimit({
+    windowMs: 1 * 60 * 1000,
+    max: 5,
+    message: { error: 'تعداد تلاش‌های شما بیش از حد مجاز است. لطفاً یک دقیقه صبر کنید.' }
+});
 
 const db = new sqlite3.Database('./appointments.db');
 
 db.serialize(() => {
+    db.run(`PRAGMA journal_mode = WAL;`);
     db.run(`CREATE TABLE IF NOT EXISTS appointments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fullname TEXT NOT NULL,
@@ -20,8 +30,7 @@ db.serialize(() => {
     )`);
 });
 
-function getNextAvailableSlot(callback) {
-    const todayShamsi = moment().format('jYYYY/jMM/jDD');
+function getAvailableSlotForDate(selectedDateShamsi, callback) {
     const slots = [];
     let start = moment('08:00', 'HH:mm');
     const end = moment('14:00', 'HH:mm');
@@ -31,45 +40,65 @@ function getNextAvailableSlot(callback) {
         start.add(10, 'minutes');
     }
 
-    db.all(`SELECT time_slot, COUNT(*) as count FROM appointments WHERE date_shamsi = ? GROUP BY time_slot`, [todayShamsi], (err, rows) => {
+    db.all(`SELECT time_slot, COUNT(*) as count FROM appointments WHERE date_shamsi = ? GROUP BY time_slot`, [selectedDateShamsi], (err, rows) => {
         if (err) return callback(err, null);
         const counts = {};
         if (rows) rows.forEach(r => counts[r.time_slot] = r.count);
 
         for (let slot of slots) {
-            if ((counts[slot] || 0) < 5) return callback(null, { date: todayShamsi, time: slot });
+            if ((counts[slot] || 0) < 5) return callback(null, { date: selectedDateShamsi, time: slot });
         }
-        
-        const tomorrowShamsi = moment().add(1, 'day').format('jYYYY/jMM/jDD');
-        db.all(`SELECT time_slot, COUNT(*) as count FROM appointments WHERE date_shamsi = ? GROUP BY time_slot`, [tomorrowShamsi], (err, rowsTomorrow) => {
-            if (err) return callback(err, null);
-            const countsTomorrow = {};
-            if (rowsTomorrow) rowsTomorrow.forEach(r => countsTomorrow[r.time_slot] = r.count);
-
-            for (let slot of slots) {
-                if ((countsTomorrow[slot] || 0) < 5) return callback(null, { date: tomorrowShamsi, time: slot });
-            }
-            callback(new Error('ظرفیت نوبت‌دهی تکمیل شده است.'), null);
-        });
+        callback(new Error('ظرفیت نوبت‌دهی برای این تاریخ تکمیل شده است.'), null);
     });
 }
 
-app.post('/api/book', (req, res) => {
-    const { fullname, student_id } = req.body;
-    if (!fullname || !student_id) return res.status(400).json({ error: 'لطفاً تمامی اطلاعات را وارد کنید.' });
+app.post('/api/book', bookingLimiter, (req, res) => {
+    const { fullname, student_id, target_date } = req.body;
 
-    db.get(`SELECT * FROM appointments WHERE student_id = ?`, [student_id], (err, row) => {
-        if (err) return res.status(500).json({ error: 'خطای سرور' });
+    if (!fullname || !student_id || !target_date) {
+        return res.status(400).json({ error: 'لطفاً تمامی اطلاعات را وارد کنید.' });
+    }
+
+    const cleanName = fullname.trim();
+    const cleanStudentId = student_id.trim();
+
+    if (cleanName.length < 3 || cleanName.length > 50) {
+        return res.status(400).json({ error: 'نام و نام خانوادگی وارد شده معتبر نیست.' });
+    }
+
+    // بررسی طول شماره دانشجویی (باید عدد و بین ۱ تا ۱۴ رقم باشد)
+    const studentIdRegex = /^\d{1,14}$/;
+    if (!studentIdRegex.test(cleanStudentId)) {
+        return res.status(400).json({ error: 'شماره دانشجویی باید فقط شامل عدد و حداکثر ۱۴ رقم باشد.' });
+    }
+
+    // تعیین تاریخ بر اساس انتخاب کاربر
+    let selectedDateShamsi = moment().format('jYYYY/jMM/jDD');
+    if (target_date === 'tomorrow') {
+        selectedDateShamsi = moment().add(1, 'day').format('jYYYY/jMM/jDD');
+    }
+
+    db.get(`SELECT * FROM appointments WHERE student_id = ?`, [cleanStudentId], (err, row) => {
+        if (err) return res.status(500).json({ error: 'خطای سرور در بررسی نوبت.' });
         if (row) return res.status(400).json({ error: 'شما قبلاً یک نوبت فعال ثبت کرده‌اید.', appointment: row });
 
-        getNextAvailableSlot((err, slot) => {
+        getAvailableSlotForDate(selectedDateShamsi, (err, slot) => {
             if (err) return res.status(400).json({ error: err.message });
             const createdAt = moment().format('jYYYY/jMM/jDD HH:mm:ss');
             const stmt = db.prepare(`INSERT INTO appointments (fullname, student_id, date_shamsi, time_slot, created_at) VALUES (?, ?, ?, ?, ?)`);
             
-            stmt.run(fullname, student_id, slot.date, slot.time, function(err) {
+            stmt.run(cleanName, cleanStudentId, slot.date, slot.time, function(err) {
                 if (err) return res.status(500).json({ error: 'خطا در ثبت نوبت.' });
-                res.json({ success: true, appointment: { id: this.lastID, fullname, student_id, date_shamsi: slot.date, time_slot: slot.time } });
+                res.json({ 
+                    success: true, 
+                    appointment: { 
+                        id: this.lastID, 
+                        fullname: cleanName, 
+                        student_id: cleanStudentId, 
+                        date_shamsi: slot.date, 
+                        time_slot: slot.time 
+                    } 
+                });
             });
             stmt.finalize();
         });
@@ -77,7 +106,8 @@ app.post('/api/book', (req, res) => {
 });
 
 app.get('/api/admin/export-excel', (req, res) => {
-    if (req.query.key !== 'SecretAdminKey1403') return res.status(403).send('دسترسی غیرمجاز!');
+    const adminKey = process.env.ADMIN_KEY || 'SecretAdminKey1403';
+    if (req.query.key !== adminKey) return res.status(403).send('دسترسی غیرمجاز!');
 
     db.all(`SELECT * FROM appointments ORDER BY date_shamsi ASC, time_slot ASC`, [], async (err, rows) => {
         if (err) return res.status(500).send('خطا در دیتابیس');
@@ -100,4 +130,4 @@ app.get('/api/admin/export-excel', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running securely on port ${PORT}`));
