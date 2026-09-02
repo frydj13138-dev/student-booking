@@ -3,64 +3,90 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>سامانه نوبت‌دهی دانشگاه مهارت و کارآفرینی</title>
+    <title>سامانه نوبت‌دهی</title>
     <style>
-        body { font-family: Tahoma, Arial, sans-serif; background-color: #eef3f8; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 90vh; color: #000; }
-        .card { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,32,96,0.15); width: 100%; max-width: 460px; border-top: 6px solid #004085; }
-        h2 { text-align: center; color: #000; font-size: 20px; margin-bottom: 25px; line-height: 1.5; }
-        .form-group { margin-bottom: 18px; }
-        label { display: block; margin-bottom: 6px; font-weight: bold; color: #000; font-size: 14px; }
-        input { width: 100%; padding: 12px; border: 1px solid #b3c6d8; border-radius: 6px; box-sizing: border-box; font-size: 14px; color: #000; background-color: #fcfdfe; }
-        button { width: 100%; padding: 12px; background-color: #004085; color: #fff; border: none; border-radius: 6px; font-size: 16px; cursor: pointer; font-weight: bold; }
-        .ticket { border: 2px dashed #004085; padding: 20px; border-radius: 8px; background: #f4f8fc; margin-top: 20px; text-align: center; color: #000; }
-        .ticket h3 { margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #cbdbe6; padding-bottom: 10px; font-size: 18px; }
-        .ticket p { margin: 10px 0; font-size: 15px; text-align: right; }
-        .print-btn { background-color: #28a745; margin-top: 15px; }
-        .error { color: #d9534f; text-align: center; margin-top: 12px; font-weight: bold; font-size: 14px; }
+        body { font-family: Tahoma, sans-serif; background-color: #f4f6f9; margin: 0; padding: 20px; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); width: 100%; max-width: 400px; text-align: center; }
+        h2 { margin-bottom: 20px; color: #333; font-size: 18px; }
+        .form-group { margin-bottom: 15px; text-align: right; }
+        label { display: block; margin-bottom: 5px; font-size: 13px; color: #666; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; box-sizing: border-box; font-family: inherit; font-size: 14px; }
+        button { width: 100%; padding: 12px; background-color: #0056b3; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 15px; font-weight: bold; margin-top: 10px; }
+        button:hover { background-color: #004085; }
+        #resultMessage { margin-top: 15px; font-size: 13px; }
+        .ticket { background: #e9f5ff; border: 1px dashed #0056b3; padding: 15px; border-radius: 8px; margin-top: 15px; text-align: right; font-size: 13px; }
     </style>
 </head>
 <body>
-<div class="card">
-    <h2>سامانه نوبت‌دهی دانشگاه مهارت و کارآفرینی</h2>
-    <form id="bookingForm">
-        <div class="form-group"><label>نام و نام خانوادگی:</label><input type="text" id="fullname" required placeholder="مثال: علی محمدی"></div>
-        <div class="form-group"><label>شماره دانشجویی:</label><input type="number" id="student_id" required placeholder="مثال: 400123456"></div>
-        <button type="submit">دریافت اولین نوبت خالی</button>
-    </form>
-    <div id="errorMsg" class="error"></div>
-    <div id="ticket-section" style="display: none;">
-        <div class="ticket">
-            <h3>برگه نوبت دانشگاه مهارت و کارآفرینی</h3>
+    <div class="card">
+        <h2>سامانه نوبت‌دهی</h2>
+        <form id="bookingForm">
+            <div class="form-group">
+                <label>نام و نام خانوادگی:</label>
+                <input type="text" id="fullname" required placeholder="مثال: علی محمدی">
+            </div>
+            <div class="form-group">
+                <label>شماره دانشجویی:</label>
+                <input type="text" id="student_id" required placeholder="مثال: 402111216">
+            </div>
+            <div class="form-group">
+                <label>انتخاب تاریخ نوبت:</label>
+                <select id="target_date" required>
+                    <option value="today">امروز</option>
+                    <option value="tomorrow">فردا</option>
+                </select>
+            </div>
+            <button type="submit">دریافت نوبت</button>
+        </form>
+
+        <div id="resultMessage"></div>
+        <div id="ticketSection" class="ticket" style="display: none;">
             <p><strong>کد پیگیری:</strong> <span id="t-id"></span></p>
-            <p><strong>نام و نام خانوادگی:</strong> <span id="t-name"></span></p>
+            <p><strong>نام:</strong> <span id="t-name"></span></p>
             <p><strong>شماره دانشجویی:</strong> <span id="t-sid"></span></p>
             <p><strong>تاریخ نوبت:</strong> <span id="t-date"></span></p>
-            <p><strong>ساعت حضور:</strong> <span id="t-time"></span></p>
+            <p><strong>ساعت نوبت:</strong> <span id="t-time"></span></p>
         </div>
-        <button class="print-btn" onclick="window.print()">چاپ برگه نوبت</button>
     </div>
-</div>
-<script>
-    document.getElementById('bookingForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const errorDiv = document.getElementById('errorMsg');
-        errorDiv.innerText = '';
-        try {
-            const res = await fetch('/api/book', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ fullname: document.getElementById('fullname').value, student_id: document.getElementById('student_id').value })
-            });
-            const data = await res.json();
-            if (!res.ok) return errorDiv.innerText = data.error || 'خطایی رخ داد.';
-            document.getElementById('t-id').innerText = data.appointment.id;
-            document.getElementById('t-name').innerText = data.appointment.fullname;
-            document.getElementById('t-sid').innerText = data.appointment.student_id;
-            document.getElementById('t-date').innerText = data.appointment.date_shamsi;
-            document.getElementById('t-time').innerText = data.appointment.time_slot;
-            document.getElementById('bookingForm').style.display = 'none';document.getElementById('ticket-section').style.display = 'block';
-        } catch (err) { errorDiv.innerText = 'اتصال به سرور برقرار نشد.'; }
-    });
-</script>
+
+    <script>
+        document.getElementById('bookingForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const resultDiv = document.getElementById('resultMessage');
+            const ticketDiv = document.getElementById('ticketSection');
+            resultDiv.innerHTML = 'در حال بررسی...';
+            ticketDiv.style.display = 'none';
+
+            const payload = {
+                fullname: document.getElementById('fullname').value,
+                student_id: document.getElementById('student_id').value,
+                target_date: document.getElementById('target_date').value
+            };
+
+            try {
+                const response = await fetch('/api/book', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    resultDiv.innerHTML = '<span style="color: green;">نوبت با موفقیت ثبت شد!</span>';
+                    document.getElementById('t-id').innerText = data.appointment.id;
+                    document.getElementById('t-name').innerText = data.appointment.fullname;
+                    document.getElementById('t-sid').innerText = data.appointment.student_id;
+                    document.getElementById('t-date').innerText = data.appointment.date_shamsi;
+                    document.getElementById('t-time').innerText = data.appointment.time_slot;
+                    ticketDiv.style.display = 'block';
+                    document.getElementById('bookingForm').style.display = 'none';
+                } else {
+                    resultDiv.innerHTML = `<span style="color: red;">${data.error}</span>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = '<span style="color: red;">خطا در اتصال به سرور.</span>';
+            }
+        });
+    </script>
 </body>
 </html>
