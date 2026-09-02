@@ -175,21 +175,24 @@
     <script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
     <script>
         $(document).ready(function() {
-            // محدوده دقیق زمان بر حسب میلی‌ثانیه برای ۱۴ تا ۲۰ شهریور ۱۴۰۳
-            var minD = new persianDate([1403, 6, 14]).valueOf();
-            var maxD = new persianDate([1403, 6, 20]).valueOf();
+            // محدوده دقیق زمان بر حسب میلی‌ثانیه برای ۱۴ تا ۲۰ شهریور ۱۴۰۵
+            var minD = new persianDate([1405, 6, 14]).valueOf();
+            var maxD = new persianDate([1405, 6, 20]).valueOf();
 
             $('.pdate').persianDatepicker({
                 format: 'YYYY/MM/DD',
                 autoClose: true,
-                minDate: minD,
-                maxDate: maxD,
                 persianDigit: false,
                 onlySelectOnDate: true,
+                minDate: minD,
+                maxDate: maxD,
+                navigator: {
+                    enabled: false // غیرفعال کردن دکمه‌های تغییر ماه و سال
+                },
                 checkDate: function(unix) {
                     var pdate = new persianDate(unix);
-                    // قفل‌سازی کامل: غیرفعال‌سازی روزهای خارج از بازه ۱۴ تا ۲۰ شهریور ۱۴۰۳
-                    return pdate.year() === 1403 && pdate.month() === 6 && pdate.date() >= 14 && pdate.date() <= 20;
+                    // ماه شهریور در این کتابخانه اندیس 5 دارد
+                    return pdate.year() === 1405 && pdate.month() === 5 && pdate.date() >= 14 && pdate.date() <= 20;
                 }
             });
         });
