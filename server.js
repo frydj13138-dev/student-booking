@@ -2,19 +2,12 @@ const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
 const moment = require('moment-jalaali');
 const ExcelJS = require('exceljs');
-const rateLimit = require('express-rate-limit');
 
 const app = express();
 app.set('trust proxy', 1);
 
 app.use(express.json());
 app.use(express.static('public'));
-
-const bookingLimiter = rateLimit({
-    windowMs: 1 * 60 * 1000,
-    max: 5,
-    message: { error: 'تعداد تلاش‌های شما بیش از حد مجاز است. لطفاً یک دقیقه صبر کنید.' }
-});
 
 const db = new sqlite3.Database('./appointments.db');
 
@@ -52,7 +45,7 @@ function getAvailableSlotForDate(selectedDateShamsi, callback) {
     });
 }
 
-app.post('/api/book', bookingLimiter, (req, res) => {
+app.post('/api/book', (req, res) => {
     const { fullname, student_id, target_date } = req.body;
 
     if (!fullname || !student_id || !target_date) {
@@ -62,45 +55,46 @@ app.post('/api/book', bookingLimiter, (req, res) => {
     const cleanName = fullname.trim();
     const cleanStudentId = student_id.trim();
 
-    if (cleanName.length < 3 || cleanName.length > 50) {
-        return res.status(400).json({ error: 'نام و نام خانوادگی وارد شده معتبر نیست.' });
+    if (cleanName.length < 2) {
+        return res.status(400).json({ error: 'نام و نام خانوادگی معتبر نیست.' });
     }
 
-    // بررسی طول شماره دانشجویی (باید عدد و بین ۱ تا ۱۴ رقم باشد)
     const studentIdRegex = /^\d{1,14}$/;
     if (!studentIdRegex.test(cleanStudentId)) {
-        return res.status(400).json({ error: 'شماره دانشجویی باید فقط شامل عدد و حداکثر ۱۴ رقم باشد.' });
+        return res.status(400).json({ error: 'شماره دانشجویی باید فقط عدد و حداکثر ۱۴ رقم باشد.' });
     }
 
-    // تعیین تاریخ بر اساس انتخاب کاربر
     let selectedDateShamsi = moment().format('jYYYY/jMM/jDD');
     if (target_date === 'tomorrow') {
         selectedDateShamsi = moment().add(1, 'day').format('jYYYY/jMM/jDD');
     }
 
     db.get(`SELECT * FROM appointments WHERE student_id = ?`, [cleanStudentId], (err, row) => {
-        if (err) return res.status(500).json({ error: 'خطای سرور در بررسی نوبت.' });
-        if (row) return res.status(400).json({ error: 'شما قبلاً یک نوبت فعال ثبت کرده‌اید.', appointment: row });
+        if (err) return res.status(500).json({ error: 'خطا در دیتابیس.' });
+        if (row) return res.status(400).json({ error: `این شماره دانشجویی قبلاً برای تاریخ ${row.date_shamsi} نوبت گرفته است.` });
 
         getAvailableSlotForDate(selectedDateShamsi, (err, slot) => {
             if (err) return res.status(400).json({ error: err.message });
             const createdAt = moment().format('jYYYY/jMM/jDD HH:mm:ss');
-            const stmt = db.prepare(`INSERT INTO appointments (fullname, student_id, date_shamsi, time_slot, created_at) VALUES (?, ?, ?, ?, ?)`);
             
-            stmt.run(cleanName, cleanStudentId, slot.date, slot.time, function(err) {
-                if (err) return res.status(500).json({ error: 'خطا در ثبت نوبت.' });
-                res.json({ 
-                    success: true, 
-                    appointment: { 
-                        id: this.lastID, 
-                        fullname: cleanName, 
-                        student_id: cleanStudentId, 
-                        date_shamsi: slot.date, 
-                        time_slot: slot.time 
-                    } 
-                });
-            });
-            stmt.finalize();
+            db.run(`INSERT INTO appointments (fullname, student_id, date_shamsi, time_slot, created_at) VALUES (?, ?, ?, ?, ?)`,
+                [cleanName, cleanStudentId, slot.date, slot.time],
+                function(err) {
+                    if (err) {
+                        return res.status(400).json({ error: 'این شماره دانشجویی قبلاً ثبت شده است.' });
+                    }
+                    res.json({ 
+                        success: true, 
+                        appointment: { 
+                            id: this.lastID, 
+                            fullname: cleanName, 
+                            student_id: cleanStudentId, 
+                            date_shamsi: slot.date, 
+                            time_slot: slot.time 
+                        } 
+                    });
+                }
+            );
         });
     });
 });
@@ -130,4 +124,5 @@ app.get('/api/admin/export-excel', (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server running securely on port ${PORT}`));
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
